@@ -1,0 +1,5 @@
+# Colab env — YOLO training + ONNX export (torch is preinstalled on Colab GPU).
+ultralytics>=8.2
+onnx>=1.16
+onnxruntime-gpu>=1.17   # INT8 export / GPU benchmark on Colab
+huggingface_hub>=0.23

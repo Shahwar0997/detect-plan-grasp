@@ -1,0 +1,11 @@
+# Local env — torch-free (training happens on Colab; see requirements-colab.txt).
+# Local = data prep, ONNX/INT8 inference, benchmarking, 3D lift, PyBullet sim.
+onnxruntime>=1.17
+numpy>=1.24
+opencv-python>=4.9
+open3d>=0.18          # point clouds, ICP (stretch)
+pybullet>=3.2.6       # sim: Panda arm, camera, IK
+huggingface_hub>=0.23 # pull YCB base+models from bop-benchmark/ycbv
+matplotlib>=3.7       # figures for grasp-docs
+tqdm>=4.66
+pyyaml>=6.0

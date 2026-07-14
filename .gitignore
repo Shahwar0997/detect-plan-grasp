@@ -1,0 +1,22 @@
+# data & model artifacts (never commit large/binary)
+data/
+runs/
+third_party/
+results/*.mp4
+results/*.gif
+*.onnx
+*.pt
+*.engine
+*.ply
+cpp/build/
+cpp/input.bin
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# os
+.DS_Store
