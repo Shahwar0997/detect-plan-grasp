@@ -1,0 +1,47 @@
+<mujoco model="dpg multi-object scene">
+  <include file="panda.xml"/>
+  <statistic center="0.5 0 0.3" extent="1.1"/>
+  <visual>
+    <headlight diffuse="0.7 0.7 0.7" ambient="0.5 0.5 0.5" specular="0.1 0.1 0.1"/>
+    <global azimuth="140" elevation="-25"/>
+  </visual>
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.45 0.6 0.8" rgb2="0.1 0.15 0.25"
+             width="512" height="512"/>
+    <material name="tablemat" rgba="0.55 0.42 0.30 1"/>
+    <texture name="soup_tex" type="2d" file="assets/soup.png"/>
+    <material name="soup_mat" texture="soup_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="soup" file="soup.obj" scale="0.001 0.001 0.001"/>
+    <texture name="mustard_tex" type="2d" file="assets/mustard.png"/>
+    <material name="mustard_mat" texture="mustard_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="mustard" file="mustard.obj" scale="0.001 0.001 0.001"/>
+    <texture name="spam_tex" type="2d" file="assets/spam.png"/>
+    <material name="spam_mat" texture="spam_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="spam" file="spam.obj" scale="0.001 0.001 0.001"/>
+    <texture name="mug_tex" type="2d" file="assets/mug.png"/>
+    <material name="mug_mat" texture="mug_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="mug" file="mug.obj" scale="0.001 0.001 0.001"/>
+  </asset>
+  <worldbody>
+    <light pos="0.5 0 1.6" dir="0 0 -1" directional="true"/>
+    <geom name="floor" type="plane" size="0 0 0.05" rgba="0.3 0.35 0.4 1"/>
+    <geom name="table" type="box" pos="0.5 0 0.15" size="0.28 0.38 0.15" material="tablemat"/>
+    <body name="obj_soup" pos="0.42 -0.15 0.36">
+      <freejoint/>
+      <geom name="geom_soup" type="mesh" mesh="soup" material="soup_mat" mass="0.1" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_mustard" pos="0.42 0.14 0.41">
+      <freejoint/>
+      <geom name="geom_mustard" type="mesh" mesh="mustard" material="mustard_mat" mass="0.1" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_spam" pos="0.6 -0.14 0.36">
+      <freejoint/>
+      <geom name="geom_spam" type="mesh" mesh="spam" material="spam_mat" mass="0.1" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_mug" pos="0.6 0.15 0.36">
+      <freejoint/>
+      <geom name="geom_mug" type="mesh" mesh="mug" material="mug_mat" mass="0.1" friction="1.5 0.1 0.001"/>
+    </body>
+    <camera name="cam" pos="0.5 -0.6 0.9" xyaxes="1 0 0 0 0.75 0.66"/>
+  </worldbody>
+</mujoco>
