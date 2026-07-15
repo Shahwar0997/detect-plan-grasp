@@ -10,6 +10,9 @@ results/*.gif
 *.ply
 cpp/build/
 cpp/input.bin
+*.zip
+# 33 MB of Panda meshes — restore via sim/fetch_assets.sh
+sim/franka/assets/
 
 # python
 __pycache__/
