@@ -12,7 +12,10 @@ cpp/build/
 cpp/input.bin
 *.zip
 # 33 MB of Panda meshes — restore via sim/fetch_assets.sh
-sim/franka/assets/
+sim/franka/assets/*
+# ...but keep the small YCB object (regen via sim/make_ycb_object.py)
+!sim/franka/assets/soup.obj
+!sim/franka/assets/soup.png
 
 # python
 __pycache__/

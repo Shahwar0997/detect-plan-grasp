@@ -30,7 +30,11 @@ Detection feeds planning; planning feeds motion; the loop verifies itself
 | Optimize | ONNX → INT8 (detection head kept FP32) | **2.1× smaller, 1.5× faster**, −2.4% mAP (CPU) |
 | Lift | depth back-projection → 3D position | **~30 mm** error, verified vs ground-truth poses |
 | Plan + Execute | analytic grasp planner + 6-DOF Jacobian IK | grasp succeeds in MuJoCo |
-| Evaluate | closed loop, 40 randomized trials | **97.5% grasp success vs 2.5% baseline** |
+| Evaluate | closed loop, randomized trials | **detector-driven 92%** grasp success (vs 2.5% no-perception, 97.5% oracle) |
+
+The detector genuinely drives the grasp: the arm renders its camera, the INT8 YOLO detects the
+object, and its box is lifted to a 3D world position the arm grasps — an object it was **not** told
+the location of.
 
 Deep per-phase write-ups (with figures + interview prompts) live in `dpg-docs/`.
 
@@ -48,7 +52,8 @@ bash sim/fetch_assets.sh                       # restore Panda meshes (gitignore
 ./.venv/bin/python src/quantize_int8.py        # INT8 model
 ./.venv/bin/python src/benchmark.py            # size/latency/mAP sweep
 ./.venv/bin/python src/lift_to_3d.py           # 3D lift vs ground truth
-./.venv/bin/python sim/run.py --trials 40      # closed-loop grasp success
+./.venv/bin/python sim/run.py --trials 40      # closed loop (oracle perception)
+./.venv/bin/python sim/run_detector.py --trials 25   # closed loop (detector-DRIVEN)
 ```
 
 ## Dataset
