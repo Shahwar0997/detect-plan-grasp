@@ -25,8 +25,12 @@ class Sim:
         self.m = mujoco.MjModel.from_xml_path(str(scene))
         self.d = mujoco.MjData(self.m)
         self.hand = self.m.body("hand").id
-        self.obj = self.m.body("object").id
-        self.obj_qadr = self.m.jnt_qposadr[self.m.body("object").jntadr[0]]
+        # single-object scenes have a body named "object"; multi-object scenes don't
+        try:
+            self.obj = self.m.body("object").id
+            self.obj_qadr = self.m.jnt_qposadr[self.m.body("object").jntadr[0]]
+        except KeyError:
+            self.obj = self.obj_qadr = None
         self.arm_qadr = np.array([self.m.joint(j).qposadr[0] for j in ARM_JOINTS])
         self.arm_dof = np.array([self.m.joint(j).dofadr[0] for j in ARM_JOINTS])
         self.arm_act = np.array([self.m.actuator(f"actuator{i}").id for i in range(1, 8)])
@@ -103,6 +107,12 @@ class Sim:
         fovy = np.deg2rad(self.m.cam_fovy[self.cam])
         fy = (h / 2) / np.tan(fovy / 2)
         return (fy, fy, w / 2, h / 2)       # fx, fy, cx, cy (square pixels)
+
+    def world_from_cam(self, c_cv: np.ndarray) -> np.ndarray:
+        """Map a CV camera-frame point (x right, y down, z forward) to world coordinates.
+        MuJoCo's camera frame is (x right, y up, z back), hence the [X, -Y, -Z] flip."""
+        c_mj = np.array([c_cv[0], -c_cv[1], -c_cv[2]])
+        return self.d.cam_xpos[self.cam] + self.d.cam_xmat[self.cam].reshape(3, 3) @ c_mj
 
     def render(self) -> np.ndarray:
         self.renderer.update_scene(self.d, camera=self.cam)
