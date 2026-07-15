@@ -76,8 +76,9 @@ def convert_split(split_dir: Path, out_root: Path, name: str, min_visib: float) 
             stem = f"{scene.name}_{int(img_id):06d}"
             (lbl_dir / f"{stem}.txt").write_text("\n".join(lines))
             # Symlink the source RGB (no copy): the YOLO dataset is a view over BOP.
-            src_img = scene / "rgb" / f"{int(img_id):06d}.png"
-            dst_img = img_dir / f"{stem}.png"
+            # Real frames are .png; the synthetic (pbr) training set uses .jpg.
+            src_img = next((scene / "rgb").glob(f"{int(img_id):06d}.*"))
+            dst_img = img_dir / f"{stem}{src_img.suffix}"
             if dst_img.is_symlink() or dst_img.exists():
                 dst_img.unlink()
             dst_img.symlink_to(src_img.resolve())
