@@ -40,8 +40,12 @@ YCB_CLASSES = [
 IMG_W, IMG_H = 640, 480
 
 
-def convert_split(split_dir: Path, out_root: Path, name: str, min_visib: float) -> dict:
-    """Convert one BOP split into YOLO images/labels under out_root. Returns stats."""
+def convert_split(split_dir: Path, out_root: Path, name: str, min_visib: float,
+                  stride: int = 1) -> dict:
+    """Convert one BOP split into YOLO images/labels under out_root. Returns stats.
+
+    stride>1 keeps every Nth frame per scene — useful for real video, which is
+    temporally redundant (consecutive frames are near-duplicates)."""
     img_dir = out_root / "images" / name
     lbl_dir = out_root / "labels" / name
     img_dir.mkdir(parents=True, exist_ok=True)
@@ -54,7 +58,9 @@ def convert_split(split_dir: Path, out_root: Path, name: str, min_visib: float) 
     for scene in scenes:
         gt = json.loads((scene / "scene_gt.json").read_text())
         info = json.loads((scene / "scene_gt_info.json").read_text())
-        for img_id, objs in gt.items():
+        for idx, (img_id, objs) in enumerate(sorted(gt.items(), key=lambda kv: int(kv[0]))):
+            if idx % stride:                             # frame subsampling
+                continue
             infos = info[img_id]
             lines = []
             for obj, meta in zip(objs, infos):
@@ -108,11 +114,13 @@ def main() -> None:
     ap.add_argument("--out", default="data/ycb_yolo", help="output YOLO dataset root")
     ap.add_argument("--min-visib", type=float, default=0.1,
                     help="drop objects with visible fraction below this")
+    ap.add_argument("--stride", type=int, default=1,
+                    help="keep every Nth frame per scene (real video is redundant)")
     args = ap.parse_args()
 
     split_dir = (repo / args.split_dir).resolve()
     out_root = (repo / args.out).resolve()
-    stats = convert_split(split_dir, out_root, args.name, args.min_visib)
+    stats = convert_split(split_dir, out_root, args.name, args.min_visib, args.stride)
     write_data_yaml(out_root)
 
     print(f"[{args.name}] {stats['scenes']} scenes -> {stats['images']} images, "
