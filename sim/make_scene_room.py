@@ -13,13 +13,16 @@ from pathlib import Path
 # world layout (metres). Base starts at origin (0,0).
 SOURCE_TABLE = (0.75, -0.55)          # source table+bin center (arm-reachable from a nearby park)
 TARGET_TABLE = (0.75,  1.35)          # target table, across the room
-SOURCE_PARK = (0.15, -0.55)           # base pose to reach the source bin
-TARGET_PARK = (0.15,  1.35)           # base pose to reach the target bin
+SOURCE_PARK = (0.28, -0.55)           # base pose to reach the source shelf (close, for a clean grasp)
+TARGET_PARK = (0.28,  1.35)           # base pose to reach the target bin
 OBSTACLES = [                          # (cx, cy, hx, hy) axis-aligned wall boxes
     (0.0, 0.4, 0.9, 0.06),            # long wall blocking the straight route
     (-0.9, 0.4, 0.06, 0.5),          # short return wall -> forces a detour to +x
 ]
-OBJECTS = [("soup", 0.75, -0.55, 0.37), ("mug", 0.62, -0.66, 0.37)]
+# open source SHELF holds the target among distractors near the front edge (comfortable top-down
+# reach); detection must pick the right one, and the open surface keeps grasps unobstructed
+OBJECTS = [("soup", 0.52, -0.44, 0.36), ("mustard", 0.61, -0.66, 0.36),
+           ("spam", 0.71, -0.48, 0.36)]
 
 
 def _bin(name, x, y, z, mat, hx=0.14, hy=0.16):
@@ -50,7 +53,7 @@ def main():
                    f'    <mesh name="{name}" file="{name}.obj" scale="0.001 0.001 0.001"/>\n')
         bodies += (f'    <body name="obj_{name}" pos="{x} {y} {z}">\n      <freejoint/>\n'
                    f'      <geom name="geom_{name}" type="mesh" mesh="{name}" material="{name}_mat" '
-                   f'mass="0.1" friction="1.5 0.1 0.001"/>\n    </body>\n')
+                   f'mass="0.1" friction="3.0 0.3 0.01"/>\n    </body>\n')
     obst = ''.join(f'    <geom name="obst{i}" type="box" pos="{cx} {cy} 0.25" size="{hx} {hy} 0.25" '
                    f'rgba="0.7 0.25 0.2 1"/>\n' for i, (cx, cy, hx, hy) in enumerate(OBSTACLES))
     tables = ''.join(f'    <geom name="tbl{i}" type="box" pos="{tx} {ty} 0.15" size="0.3 0.3 0.15" material="tablemat"/>\n'
@@ -65,7 +68,8 @@ def main():
   <worldbody>
     <light pos="0.4 0.4 2.5" dir="0 0 -1" directional="true"/>
     <geom name="floor" type="plane" size="6 6 0.05" material="floormat"/>
-{tables}{obst}{_bin("bin1", *SOURCE_TABLE, 0.33, "light-wood")}{_bin("bin2", *TARGET_TABLE, 0.33, "dark-wood")}{bodies}    <camera name="cam" pos="0.35 0.4 3.7" xyaxes="1 0 0 0 1 0.12"/>
+{tables}{obst}{_bin("bin2", *TARGET_TABLE, 0.33, "dark-wood")}{bodies}    <camera name="cam" pos="0.35 0.4 3.7" xyaxes="1 0 0 0 1 0.12"/>
+    <camera name="srccam" pos="0.63 -1.15 0.9" xyaxes="1 0 0 0 0.75 0.66"/>
   </worldbody>
 </mujoco>
 '''

@@ -39,9 +39,11 @@ class RoomNav:
 
     def astar(self, start_xy, goal_xy):
         s, g = self._cell(*start_xy), self._cell(*goal_xy)
-        if not self._free(*g):                                 # nudge goal to nearest free cell
-            g = min(((i, j) for i in range(self.nx) for j in range(self.ny) if self._free(i, j)),
-                    key=lambda c: (c[0] - g[0]) ** 2 + (c[1] - g[1]) ** 2)
+        free_cells = [(i, j) for i in range(self.nx) for j in range(self.ny) if self._free(i, j)]
+        if not self._free(*s):                                 # nudge start off an obstacle (a park
+            s = min(free_cells, key=lambda c: (c[0] - s[0]) ** 2 + (c[1] - s[1]) ** 2)   # pose may sit
+        if not self._free(*g):                                 # right at a table edge) and goal too
+            g = min(free_cells, key=lambda c: (c[0] - g[0]) ** 2 + (c[1] - g[1]) ** 2)
         nbrs = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
 
         def h(c):

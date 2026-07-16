@@ -29,24 +29,48 @@ class Grasp:
     pre_height: float = 0.12        # pre-grasp standoff above the object
 
 
-def plan_grasp(object_pos, sim, n_yaw: int = 4) -> Grasp | None:
-    """Generate top-down candidates at a few yaws, score by IK reachability, return the best.
+GRIPPER_MAX = 0.075     # Panda parallel-jaw max opening (m); object must fit across the fingers
 
-    score = reachable? (IK residual small) minus a small penalty on approach residual.
-    Returns None if no candidate is reachable (a legitimate 'can't grasp this' answer).
+
+def grasp_candidates(object_pos, sim, pts_world=None, n_yaw: int = 12) -> list[Grasp]:
+    """Top-down grasp candidates over a range of yaws, ranked best-first by IK reachability and (if
+    the object's point cloud is given) how well it fits between the fingers.
+
+    With `pts_world` (world-frame surface points, from perception) the score aligns the fingers
+    ACROSS the object's NARROW axis and rejects yaws where the object is wider than the gripper —
+    which is what lets it grasp boxes and bottles, not just cans. Returning a ranked *list* (not
+    just the best) lets the caller verify grasps in sim and fall through to the next candidate,
+    since gripper dynamics make some yaws eject the object even when reachable.
     """
     p = np.asarray(object_pos, float)
-    best: Grasp | None = None
-    for theta in np.linspace(0, np.pi / 2, n_yaw):        # 0..90deg (box symmetry)
+    sl = None
+    if pts_world is not None and len(pts_world) >= 10:
+        pts_world = np.asarray(pts_world)
+        sl = pts_world[np.abs(pts_world[:, 2] - p[2]) < 0.03][:, :2]   # cross-section at grasp height
+        if len(sl) < 10:
+            sl = pts_world[:, :2]
+    cands = []
+    for theta in np.linspace(0, np.pi, n_yaw, endpoint=False):     # 0..180deg finger azimuths
         R = _yaw(theta)
         q = sim.solve_ik(p, R)                            # non-destructive IK probe
         resid = _ik_residual(sim, q, p, R)
         if resid > 0.02:                                  # unreachable at this yaw
             continue
-        score = 1.0 - resid                               # closer solve = higher score
-        if best is None or score > best.score:
-            best = Grasp(pos=p, R=R, score=score)
-    return best
+        fit = 0.0
+        if sl is not None:
+            close_dir = R[:2, 1] / (np.linalg.norm(R[:2, 1]) + 1e-9)   # world finger-closing axis
+            width = float((sl @ close_dir).ptp())                     # object extent across fingers
+            if width > 0.11:                              # physically can't grip this axis at all
+                continue
+            fit = 1.0 - width / 0.11                      # prefer the NARROW axis (min width)
+        cands.append(Grasp(pos=p, R=R, score=(1.0 - resid) + fit))
+    return sorted(cands, key=lambda g: g.score, reverse=True)
+
+
+def plan_grasp(object_pos, sim, pts_world=None, n_yaw: int = 12) -> Grasp | None:
+    """Best single top-down grasp (see grasp_candidates). None if nothing is reachable / fits."""
+    cands = grasp_candidates(object_pos, sim, pts_world, n_yaw)
+    return cands[0] if cands else None
 
 
 def _ik_residual(sim, q, target, R) -> float:
@@ -61,7 +85,7 @@ def _ik_residual(sim, q, target, R) -> float:
     r_err = np.linalg.norm(0.5 * sum(np.cross(Rc[:, i], R[:, i]) for i in range(3)))
     sim.d.qpos[:] = saved
     mujoco.mj_forward(sim.m, sim.d)
-    return p_err + 0.05 * r_err
+    return p_err + 0.15 * r_err          # weight orientation: reject tilted (non-top-down) grasps
 
 
 def execute_grasp(sim, grasp: Grasp, lift_h: float = 0.2) -> bool:
