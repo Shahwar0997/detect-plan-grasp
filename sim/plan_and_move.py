@@ -90,11 +90,24 @@ def move_object_planned(sim: MultiSim, det: Detector, target_substr: str, dest_x
             "plan_waypoints": len(path), "placed": placed}
 
 
+def run_bins_command(sim: MultiSim, det: Detector, command: str) -> dict:
+    """Natural-language -> planned pick-place: parse the object, move it to the other bin."""
+    from language import parse, _short
+    from make_scene_bins import BIN2
+    percepts, _ = perceive_all(sim, det)
+    plan = parse(command, [_short(c) for c, _, _ in percepts])
+    if not plan or not plan.get("object"):
+        return {"ok": False, "reason": "could not parse object"}
+    res = move_object_planned(sim, det, plan["object"], (BIN2[0], BIN2[1]))
+    res["object"] = plan["object"]
+    return res
+
+
 if __name__ == "__main__":
-    from make_scene_bins import OBJECTS, BIN2
-    target = sys.argv[1] if len(sys.argv) > 1 else "tomato_soup_can"
+    from make_scene_bins import OBJECTS
+    command = " ".join(sys.argv[1:]) or "move the soup can to the other bin"
     sim = MultiSim(OBJECTS, scene=BINS)
     sim.settle()
     det = Detector(MODEL, conf=0.30)
-    print(f"moving '{target}' from bin1 -> bin2 (over the divider)...")
-    print(move_object_planned(sim, det, target, (BIN2[0], BIN2[1])))
+    print(f'command: "{command}"')
+    print(run_bins_command(sim, det, command))
