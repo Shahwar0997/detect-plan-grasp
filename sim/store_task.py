@@ -55,6 +55,20 @@ class StoreSim(MobileSim):
             self.d.qpos[adr:adr + 7] = [x, y, z, np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]
         self.d.ctrl[:] = self.m.key("home").ctrl
         mujoco.mj_forward(self.m, self.d)
+        # arm pose for travelling: raised & compact (hand ~0.25 fwd, 0.82 up in base frame) so it
+        # clears the shelf objects instead of the folded home arm plowing through them on approach
+        self.q_travel = self.solve_ik(np.array([0.25, 0.0, 0.82]), self.DOWN)
+
+    def grasp_park(self, shelf, x):
+        _, cy, side = SHELVES[shelf]
+        return (x, cy + side * 0.45)                           # park directly in front of a column
+
+    def clear_spot(self, shelf):
+        """An x on `shelf` clear of the objects already there (so a placed object doesn't knock one)."""
+        cx, cy, side = SHELVES[shelf]
+        taken = [dx for _, sh, dx in OBJECTS if sh == shelf]      # candidates stay off the shelf edge
+        dx = max([-0.26, -0.09, 0.09, 0.26], key=lambda c: min(abs(c - t) for t in taken))
+        return (cx + dx, cy + side * 0.04)
 
     def drive_to(self, x, y, yaw=None, steps=6000, tol=0.05):
         self.d.ctrl[self.base_act[0]], self.d.ctrl[self.base_act[1]] = x, y
@@ -117,7 +131,9 @@ def run(msim: StoreSim, det: Detector, command: str) -> dict:
     mesh = CLASS2MESH[tgt_class]
     suffix = next(s for s, m, sh, *_ in msim.placements if sh == source and m == mesh)
 
-    msim.drive_to(*shelf_park(source), yaw=msim.face_shelf_yaw(source))   # 2. drive up, face the shelf
+    src_park = msim.grasp_park(source, p[0])                      # 2. tuck arm, drive up aligned+facing
+    msim.move_to(msim.q_travel, steps=300)                       #    (tucked so it clears the shelf)
+    msim.drive_to(*src_park, yaw=msim.face_shelf_yaw(source))
     if not grasp_verified(msim, p, pts, suffix):                  # 3. grasp what we detected
         return {"task": task, "detected": True, "conf": round(conf, 2), "grasped": False}
     gR = msim.grasp_R
@@ -127,18 +143,19 @@ def run(msim: StoreSim, det: Detector, command: str) -> dict:
     bx, by = msim.base_xy()
     msim.reach([bx, by, 0.78], R_des=gR, steps=500)               # over the base, clear of shelves
 
-    path = RoomNav(_obstacles(), xlim=(-2.0, 2.0), ylim=(-2.0, 2.0),   # 5. A* navigate to the dest
-                   inflate=0.22).astar(shelf_park(source), shelf_park(dest))
+    px, py = msim.clear_spot(dest)                               # 5. A* navigate to a clear spot on
+    dcx, dcy, dside = SHELVES[dest]                              #    the destination shelf
+    dst_park = (px, dcy + dside * 0.45)
+    path = RoomNav(_obstacles(), xlim=(-2.0, 2.0), ylim=(-2.0, 2.0),
+                   inflate=0.22).astar(src_park, dst_park)
     if path is None:
         return {"task": task, "grasped": True, "navigated": False}
     for wx, wy in path:
         msim.drive_to(wx, wy)
 
-    dcx, dcy, dside = SHELVES[dest]                               # 6. face the dest shelf, place upright
-    msim.drive_to(*shelf_park(dest), yaw=msim.face_shelf_yaw(dest))
-    px, py = dcx, dcy + dside * 0.06
-    msim.reach([px, py, 0.60], R_des=gR, steps=500)
-    msim.reach([px, py, SHELF_TOP + 0.13], R_des=gR, steps=450)   # lower to just above the shelf top
+    msim.drive_to(*dst_park, yaw=msim.face_shelf_yaw(dest))       # 6. face dest, place upright at spot
+    msim.reach([px, py, 0.72], R_des=msim.DOWN, steps=500)       #    fresh top-down orientation (gR was
+    msim.reach([px, py, SHELF_TOP + 0.13], R_des=msim.DOWN, steps=450)   #  captured facing the source)
     msim.frame_hook = None
     msim.set_gripper(open_=True, steps=250)
     for _ in range(250):
@@ -147,7 +164,7 @@ def run(msim: StoreSim, det: Detector, command: str) -> dict:
     o = msim.d.xpos[msim.m.body(f"obj_{suffix}").id]              # 7. verify: on the dest shelf, upright
     R = msim.d.xmat[msim.m.body(f"obj_{suffix}").id].reshape(3, 3)
     tilt = float(np.degrees(np.arccos(min(1.0, abs(R[2, 2])))))
-    placed = bool(abs(o[0]-dcx) < 0.35 and abs(o[1]-dcy) < 0.32 and o[2] > SHELF_TOP - 0.02)
+    placed = bool(abs(o[0]-px) < 0.20 and abs(o[1]-py) < 0.18 and o[2] > SHELF_TOP - 0.02)
     return {"task": {"object": task["object"], "source": source, "dest": dest},
             "conf": round(conf, 2), "grasped": True, "nav_waypoints": len(path),
             "placed": placed, "tilt_deg": round(tilt)}
