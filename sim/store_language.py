@@ -106,7 +106,10 @@ def _llm_parse(command: str) -> dict | None:
 def parse(command: str) -> dict | None:
     """Parse a command into {object, source, dest, valid[, reason]}. None if it can't be grounded."""
     raw = _llm_parse(command) or _rule_parse(command)
-    obj = ALIASES.get(str(raw.get("object", "")).lower(), raw.get("object"))
+    # normalize the object: catalog name as-is, else exact alias, else substring match (the LLM may
+    # answer with a description like "tomato soup can" rather than the catalog name "soup")
+    obj_raw = str(raw.get("object") or "").lower().strip()
+    obj = obj_raw if obj_raw in CATALOG else (ALIASES.get(obj_raw) or _find_object(obj_raw))
     src = str(raw.get("source") or "").upper()
     dst = str(raw.get("dest") or "").upper()
     if obj not in CATALOG or src not in SHELVES or dst not in SHELVES:
