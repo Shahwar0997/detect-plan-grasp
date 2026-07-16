@@ -22,6 +22,10 @@ sim/franka/assets/*
 !sim/franka/assets/spam.png
 !sim/franka/assets/mug.obj
 !sim/franka/assets/mug.png
+# robosuite bin arena textures (vendored; robosuite itself is not a runtime dep)
+!sim/franka/assets/light-wood.png
+!sim/franka/assets/dark-wood.png
+!sim/franka/assets/light-gray-floor-tile.png
 
 # python
 __pycache__/
