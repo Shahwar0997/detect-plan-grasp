@@ -35,7 +35,10 @@ class MobileSim(MultiSim):
         super().__init__(objects, scene=scene, **kw)
         self.base_act = [self.m.actuator(f"base_{a}").id for a in ("x", "y", "yaw")]
         self.base_qadr = [self.m.jnt_qposadr[self.m.joint(f"base_{a}").id] for a in ("x", "y", "yaw")]
-        self.src_cam = self.m.camera("srccam").id
+        try:
+            self.src_cam = self.m.camera("srccam").id         # room scene has one; store has per-shelf
+        except KeyError:
+            self.src_cam = None
         for fb in ("left_finger", "right_finger"):            # finger pads: condim=6 so the grip
             bid = self.m.body(fb).id                          # resists rotation and a grasped object
             for gi in range(self.m.ngeom):                    # is carried upright, not tilted out

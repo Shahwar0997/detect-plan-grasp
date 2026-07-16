@@ -100,6 +100,6 @@
     <camera name="cam_B" pos="1.150 0.680 0.90" xyaxes="1 0 0 0 0.75 0.66"/>
     <camera name="cam_C" pos="-1.150 -0.680 0.90" xyaxes="-1 0 0 0 -0.75 0.66"/>
     <camera name="cam_D" pos="1.150 -0.680 0.90" xyaxes="-1 0 0 0 -0.75 0.66"/>
-    <camera name="overview" pos="0 -0.2 4.2" xyaxes="1 0 0 0 1 0.1"/>
+    <camera name="cam" pos="0 -0.2 4.2" xyaxes="1 0 0 0 1 0.1"/>
   </worldbody>
 </mujoco>

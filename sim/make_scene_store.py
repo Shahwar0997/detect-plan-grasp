@@ -15,7 +15,7 @@ from pathlib import Path
 ROBOT_START = (0.0, 0.0)
 SHELF_HX, SHELF_HY, SHELF_TOP = 0.38, 0.20, 0.40      # shelf-top half-extents and height
 OBJ_Z = SHELF_TOP + 0.04                              # objects rest just above the shelf top
-PARK_GAP = 0.72                                       # how far in front of a shelf the robot parks
+PARK_GAP = 0.45                                       # how far in front of a shelf the robot parks
 
 # shelf: (cx, cy, cam_side)  cam_side = -1 -> camera/robot on the -y side (looks +y);
 #                                    +1 -> on the +y side (looks -y). Objects face the camera.
@@ -94,7 +94,7 @@ def main():
   <worldbody>
     <light pos="0 0 3.0" dir="0 0 -1" directional="true"/>
     <geom name="floor" type="plane" size="8 8 0.05" material="floormat"/>
-{shelves}{bodies}{cams}    <camera name="overview" pos="0 -0.2 4.2" xyaxes="1 0 0 0 1 0.1"/>
+{shelves}{bodies}{cams}    <camera name="cam" pos="0 -0.2 4.2" xyaxes="1 0 0 0 1 0.1"/>
   </worldbody>
 </mujoco>
 '''
