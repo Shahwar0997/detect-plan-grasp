@@ -1,0 +1,105 @@
+<mujoco model="dpg store (prompt-driven mobile manipulation)">
+  <include file="panda_mobile.xml"/>
+  <statistic center="0 0 0.3" extent="3.2"/>
+  <visual><global offwidth="1280" offheight="960" azimuth="120" elevation="-40"/><headlight diffuse="0.7 0.7 0.7" ambient="0.5 0.5 0.5"/></visual>
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.5 0.65 0.85" rgb2="0.1 0.15 0.25" width="512" height="512"/>
+    <texture name="ft" type="2d" file="assets/light-gray-floor-tile.png"/>
+    <material name="floormat" texture="ft" texrepeat="14 14" reflectance="0.05"/>
+    <texture name="lw" type="2d" file="assets/light-wood.png"/>
+    <material name="shelfmat" texture="lw" texrepeat="3 3"/>
+    <material name="labelmat" rgba="0.15 0.17 0.22 1"/>
+    <texture name="banana_tex" type="2d" file="assets/banana.png"/>
+    <material name="banana_mat" texture="banana_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="banana" file="banana.obj" scale="0.001 0.001 0.001"/>
+    <texture name="bleach_tex" type="2d" file="assets/bleach.png"/>
+    <material name="bleach_mat" texture="bleach_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="bleach" file="bleach.obj" scale="0.001 0.001 0.001"/>
+    <texture name="chef_tex" type="2d" file="assets/chef.png"/>
+    <material name="chef_mat" texture="chef_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="chef" file="chef.obj" scale="0.001 0.001 0.001"/>
+    <texture name="cracker_tex" type="2d" file="assets/cracker.png"/>
+    <material name="cracker_mat" texture="cracker_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="cracker" file="cracker.obj" scale="0.001 0.001 0.001"/>
+    <texture name="gelatin_tex" type="2d" file="assets/gelatin.png"/>
+    <material name="gelatin_mat" texture="gelatin_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="gelatin" file="gelatin.obj" scale="0.001 0.001 0.001"/>
+    <texture name="mug_tex" type="2d" file="assets/mug.png"/>
+    <material name="mug_mat" texture="mug_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="mug" file="mug.obj" scale="0.001 0.001 0.001"/>
+    <texture name="mustard_tex" type="2d" file="assets/mustard.png"/>
+    <material name="mustard_mat" texture="mustard_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="mustard" file="mustard.obj" scale="0.001 0.001 0.001"/>
+    <texture name="soup_tex" type="2d" file="assets/soup.png"/>
+    <material name="soup_mat" texture="soup_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="soup" file="soup.obj" scale="0.001 0.001 0.001"/>
+    <texture name="spam_tex" type="2d" file="assets/spam.png"/>
+    <material name="spam_mat" texture="spam_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="spam" file="spam.obj" scale="0.001 0.001 0.001"/>
+  </asset>
+  <worldbody>
+    <light pos="0 0 3.0" dir="0 0 -1" directional="true"/>
+    <geom name="floor" type="plane" size="8 8 0.05" material="floormat"/>
+    <geom name="shelf_A" type="box" pos="-1.15 1.3 0.200" size="0.38 0.2 0.200" material="shelfmat"/>
+    <geom name="label_A" type="box" pos="-1.15 1.090 0.30" size="0.09 0.005 0.06" material="labelmat"/>
+    <geom name="shelf_B" type="box" pos="1.15 1.3 0.200" size="0.38 0.2 0.200" material="shelfmat"/>
+    <geom name="label_B" type="box" pos="1.15 1.090 0.30" size="0.09 0.005 0.06" material="labelmat"/>
+    <geom name="shelf_C" type="box" pos="-1.15 -1.3 0.200" size="0.38 0.2 0.200" material="shelfmat"/>
+    <geom name="label_C" type="box" pos="-1.15 -1.090 0.30" size="0.09 0.005 0.06" material="labelmat"/>
+    <geom name="shelf_D" type="box" pos="1.15 -1.3 0.200" size="0.38 0.2 0.200" material="shelfmat"/>
+    <geom name="label_D" type="box" pos="1.15 -1.090 0.30" size="0.09 0.005 0.06" material="labelmat"/>
+    <body name="obj_A_soup_0" pos="-1.350 1.260 0.44" quat="1.0 0 0 0.0">
+      <freejoint/>
+      <geom name="g_A_soup_0" type="mesh" mesh="soup" material="soup_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_A_mustard_1" pos="-1.130 1.260 0.44" quat="1.0 0 0 0.0">
+      <freejoint/>
+      <geom name="g_A_mustard_1" type="mesh" mesh="mustard" material="mustard_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_A_spam_2" pos="-0.930 1.260 0.44" quat="1.0 0 0 0.0">
+      <freejoint/>
+      <geom name="g_A_spam_2" type="mesh" mesh="spam" material="spam_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_B_mug_3" pos="0.950 1.260 0.44" quat="1.0 0 0 0.0">
+      <freejoint/>
+      <geom name="g_B_mug_3" type="mesh" mesh="mug" material="mug_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_B_soup_4" pos="1.170 1.260 0.44" quat="1.0 0 0 0.0">
+      <freejoint/>
+      <geom name="g_B_soup_4" type="mesh" mesh="soup" material="soup_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_B_bleach_5" pos="1.370 1.260 0.44" quat="1.0 0 0 0.0">
+      <freejoint/>
+      <geom name="g_B_bleach_5" type="mesh" mesh="bleach" material="bleach_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_C_cracker_6" pos="-1.350 -1.260 0.44" quat="0.0 0 0 1.0">
+      <freejoint/>
+      <geom name="g_C_cracker_6" type="mesh" mesh="cracker" material="cracker_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_C_gelatin_7" pos="-1.110 -1.260 0.44" quat="0.0 0 0 1.0">
+      <freejoint/>
+      <geom name="g_C_gelatin_7" type="mesh" mesh="gelatin" material="gelatin_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_C_mustard_8" pos="-0.930 -1.260 0.44" quat="0.0 0 0 1.0">
+      <freejoint/>
+      <geom name="g_C_mustard_8" type="mesh" mesh="mustard" material="mustard_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_D_chef_9" pos="0.950 -1.260 0.44" quat="0.0 0 0 1.0">
+      <freejoint/>
+      <geom name="g_D_chef_9" type="mesh" mesh="chef" material="chef_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_D_spam_10" pos="1.190 -1.260 0.44" quat="0.0 0 0 1.0">
+      <freejoint/>
+      <geom name="g_D_spam_10" type="mesh" mesh="spam" material="spam_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_D_banana_11" pos="1.370 -1.260 0.44" quat="0.0 0 0 1.0">
+      <freejoint/>
+      <geom name="g_D_banana_11" type="mesh" mesh="banana" material="banana_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
+    </body>
+    <camera name="cam_A" pos="-1.150 0.680 0.90" xyaxes="1 0 0 0 0.75 0.66"/>
+    <camera name="cam_B" pos="1.150 0.680 0.90" xyaxes="1 0 0 0 0.75 0.66"/>
+    <camera name="cam_C" pos="-1.150 -0.680 0.90" xyaxes="-1 0 0 0 -0.75 0.66"/>
+    <camera name="cam_D" pos="1.150 -0.680 0.90" xyaxes="-1 0 0 0 -0.75 0.66"/>
+    <camera name="overview" pos="0 -0.2 4.2" xyaxes="1 0 0 0 1 0.1"/>
+  </worldbody>
+</mujoco>

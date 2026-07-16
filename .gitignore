@@ -22,6 +22,19 @@ sim/franka/assets/*
 !sim/franka/assets/spam.png
 !sim/franka/assets/mug.obj
 !sim/franka/assets/mug.png
+# store-scene YCB objects (milestone 07)
+!sim/franka/assets/bleach.obj
+!sim/franka/assets/bleach.png
+!sim/franka/assets/cracker.obj
+!sim/franka/assets/cracker.png
+!sim/franka/assets/gelatin.obj
+!sim/franka/assets/gelatin.png
+!sim/franka/assets/chef.obj
+!sim/franka/assets/chef.png
+!sim/franka/assets/banana.obj
+!sim/franka/assets/banana.png
+!sim/franka/assets/sugar.obj
+!sim/franka/assets/sugar.png
 # robosuite bin arena textures (vendored; robosuite itself is not a runtime dep)
 !sim/franka/assets/light-wood.png
 !sim/franka/assets/dark-wood.png
