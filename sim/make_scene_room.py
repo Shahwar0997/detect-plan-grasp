@@ -53,7 +53,9 @@ def main():
                    f'    <mesh name="{name}" file="{name}.obj" scale="0.001 0.001 0.001"/>\n')
         bodies += (f'    <body name="obj_{name}" pos="{x} {y} {z}">\n      <freejoint/>\n'
                    f'      <geom name="geom_{name}" type="mesh" mesh="{name}" material="{name}_mat" '
-                   f'mass="0.1" friction="3.0 0.3 0.01"/>\n    </body>\n')
+                   # condim=6 (torsional/rolling friction) so a grasped object doesn't tilt out of
+                   # the gripper; the finger pads carry the same condim so the contact uses it
+                   f'mass="0.1" condim="6" friction="1.5 0.1 0.001"/>\n    </body>\n')
     obst = ''.join(f'    <geom name="obst{i}" type="box" pos="{cx} {cy} 0.25" size="{hx} {hy} 0.25" '
                    f'rgba="0.7 0.25 0.2 1"/>\n' for i, (cx, cy, hx, hy) in enumerate(OBSTACLES))
     tables = ''.join(f'    <geom name="tbl{i}" type="box" pos="{tx} {ty} 0.15" size="0.3 0.3 0.15" material="tablemat"/>\n'

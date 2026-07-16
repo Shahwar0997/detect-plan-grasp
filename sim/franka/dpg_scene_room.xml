@@ -42,15 +42,15 @@
     </body>
     <body name="obj_soup" pos="0.52 -0.44 0.36">
       <freejoint/>
-      <geom name="geom_soup" type="mesh" mesh="soup" material="soup_mat" mass="0.1" friction="3.0 0.3 0.01"/>
+      <geom name="geom_soup" type="mesh" mesh="soup" material="soup_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
     </body>
     <body name="obj_mustard" pos="0.61 -0.66 0.36">
       <freejoint/>
-      <geom name="geom_mustard" type="mesh" mesh="mustard" material="mustard_mat" mass="0.1" friction="3.0 0.3 0.01"/>
+      <geom name="geom_mustard" type="mesh" mesh="mustard" material="mustard_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
     </body>
     <body name="obj_spam" pos="0.71 -0.48 0.36">
       <freejoint/>
-      <geom name="geom_spam" type="mesh" mesh="spam" material="spam_mat" mass="0.1" friction="3.0 0.3 0.01"/>
+      <geom name="geom_spam" type="mesh" mesh="spam" material="spam_mat" mass="0.1" condim="6" friction="1.5 0.1 0.001"/>
     </body>
     <camera name="cam" pos="0.35 0.4 3.7" xyaxes="1 0 0 0 1 0.12"/>
     <camera name="srccam" pos="0.63 -1.15 0.9" xyaxes="1 0 0 0 0.75 0.66"/>

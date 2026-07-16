@@ -36,6 +36,11 @@ class MobileSim(MultiSim):
         self.base_act = [self.m.actuator(f"base_{a}").id for a in ("x", "y", "yaw")]
         self.base_qadr = [self.m.jnt_qposadr[self.m.joint(f"base_{a}").id] for a in ("x", "y", "yaw")]
         self.src_cam = self.m.camera("srccam").id
+        for fb in ("left_finger", "right_finger"):            # finger pads: condim=6 so the grip
+            bid = self.m.body(fb).id                          # resists rotation and a grasped object
+            for gi in range(self.m.ngeom):                    # is carried upright, not tilted out
+                if self.m.geom_bodyid[gi] == bid:
+                    self.m.geom_condim[gi] = 6
 
     def base_xy(self):
         return np.array([self.d.qpos[self.base_qadr[0]], self.d.qpos[self.base_qadr[1]]])
@@ -124,11 +129,11 @@ def run(msim: MobileSim, det: Detector, target: str) -> dict:
         msim.drive_base(wx, wy)
 
     dx, dy = TARGET_TABLE[0], TARGET_TABLE[1]                  # 5. place in target bin
-    msim.reach([dx, dy, 0.5], R_des=g.R, steps=600)
-    msim.reach([dx, dy, 0.4], R_des=g.R, steps=500)
+    msim.reach([dx, dy, 0.55], R_des=g.R, steps=600)
+    msim.reach([dx, dy, 0.46], R_des=g.R, steps=500)           # lower to just above the bin floor
     msim.frame_hook = None
-    msim.set_gripper(open_=True, steps=250)
-    for _ in range(200):
+    msim.set_gripper(open_=True, steps=250)                    # release; it settles upright
+    for _ in range(250):
         mujoco.mj_step(msim.m, msim.d)
 
     obj = msim.d.xpos[msim.m.body(f"obj_{mesh}").id]           # 6. verify arrival at target bin
