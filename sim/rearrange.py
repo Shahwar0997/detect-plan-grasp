@@ -24,6 +24,11 @@ from grasp_planner import plan_grasp                       # noqa: E402
 MULTI_SCENE = str(Path(__file__).resolve().parents[1] / "sim/franka/dpg_scene_multi.xml")
 MODEL = str(Path(__file__).resolve().parents[1] / "runs/ycb_artifacts/best_int8.onnx")
 
+# mesh name (body obj_<name>) -> detector class, so we can verify the right object was lifted
+NAME2CLASS = {"soup": "tomato_soup_can", "mustard": "mustard_bottle", "mug": "mug",
+              "spam": "potted_meat_can", "sugar": "sugar_box", "gelatin": "gelatin_box",
+              "chef": "master_chef_can", "cracker": "cracker_box", "bleach": "bleach_cleanser"}
+
 
 class MultiSim(Sim):
     """A Sim over a scene with several free-jointed objects named obj_<name>."""
@@ -60,32 +65,35 @@ def perceive_all(sim: MultiSim, det: Detector):
 
 
 def grasp_named(sim: MultiSim, det: Detector, target_substr: str,
-                place=None, lift_z=0.28) -> bool:
-    """Detect, find the object whose class contains `target_substr`, and grasp (optionally
-    place it at `place`=(x,y)). Traverses high to avoid the other objects."""
+                place=None, lift_z=0.52) -> bool:
+    """Detect, find the object whose class contains `target_substr`, grasp it (optionally place
+    at `place`=(x,y)), and return whether it was ACTUALLY lifted (verified against the object's
+    body height, not just 'the motion ran'). High traversal clears the other objects."""
     percepts, _ = perceive_all(sim, det)
     hits = [(cls, w) for cls, w, _ in percepts if target_substr in cls]
     if not hits:
         return False
-    _, p = hits[0]
-    p = p.copy()
-    p[2] -= 0.02                                           # grip below the surface centroid
+    p = hits[0][1].copy()
+    mesh = next((n for n, *_ in sim.objects if target_substr in NAME2CLASS.get(n, "")), None)
+    z0 = sim.body_z(mesh) if mesh else None
     g = plan_grasp(p, sim)
     if g is None:
         return False
 
     sim.set_gripper(open_=True, steps=100)
-    sim.reach([p[0], p[1], lift_z + 0.05], R_des=g.R, steps=500)      # go high first
-    sim.reach([p[0], p[1], p[2] + 0.12], R_des=g.R, steps=500)        # descend over target
-    sim.reach(p, R_des=g.R, steps=400)
-    sim.set_gripper(open_=False, steps=350)
-    sim.reach([p[0], p[1], lift_z + 0.05], R_des=g.R, steps=500)      # lift high (clear others)
-    if place is not None:
-        sim.reach([place[0], place[1], lift_z + 0.05], R_des=g.R, steps=600)   # traverse high
-        sim.reach([place[0], place[1], p[2] + 0.01], R_des=g.R, steps=500)     # lower
-        sim.set_gripper(open_=True, steps=250)
-        sim.reach([place[0], place[1], lift_z + 0.05], R_des=g.R, steps=400)
-    return True
+    sim.reach([p[0], p[1], p[2] + 0.13], R_des=g.R, steps=600)        # descend over target
+    sim.reach(p, R_des=g.R, steps=600)                               # settle at grasp pose
+    sim.set_gripper(open_=False, steps=500)                          # close
+    sim.reach([p[0], p[1], lift_z], R_des=g.R, steps=600)            # lift high (clear others)
+
+    lifted = mesh is not None and (sim.body_z(mesh) - z0) > 0.05     # VERIFY it rose
+    if place is not None and lifted:
+        sim.reach([place[0], place[1], lift_z], R_des=g.R, steps=700)         # traverse high
+        sim.reach([place[0], place[1], p[2] + 0.01], R_des=g.R, steps=500)    # lower
+        sim.set_gripper(open_=True, steps=250)                                # release
+        sim.reach([place[0], place[1], lift_z], R_des=g.R, steps=400)
+    sim.home_arm()                    # clear the camera view for the next perception
+    return lifted
 
 
 if __name__ == "__main__":

@@ -86,20 +86,30 @@ class Sim:
         return q
 
     # ---- actuation ----------------------------------------------------------
+    frame_hook = None          # optional callable() invoked during motion (for rendering demos)
+
     def move_to(self, q: np.ndarray, steps: int = 800):
         self.d.ctrl[self.arm_act] = q
-        for _ in range(steps):
+        for i in range(steps):
             mujoco.mj_step(self.m, self.d)
+            if self.frame_hook and i % 15 == 0:
+                self.frame_hook()
 
     def set_gripper(self, open_: bool, steps: int = 300):
         self.d.ctrl[self.grip_act] = 255 if open_ else 0
-        for _ in range(steps):
+        for i in range(steps):
             mujoco.mj_step(self.m, self.d)
+            if self.frame_hook and i % 15 == 0:
+                self.frame_hook()
 
     def reach(self, target: np.ndarray, R_des=None, steps: int = 800) -> float:
         """Solve IK to target (with optional orientation) and drive the arm there."""
         self.move_to(self.solve_ik(np.asarray(target), R_des), steps)
         return float(np.linalg.norm(np.asarray(target) - self.grasp_point()))
+
+    def home_arm(self, steps: int = 500):
+        """Return the arm to the 'home' joint pose (folded up, out of the camera's view)."""
+        self.move_to(self.m.key("home").qpos[self.arm_qadr], steps)
 
     # ---- perception (for the closed loop, Day 6) ----------------------------
     def intrinsics(self):
