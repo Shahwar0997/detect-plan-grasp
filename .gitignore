@@ -36,3 +36,4 @@ venv/
 
 # os
 .DS_Store
+MUJOCO_LOG.TXT

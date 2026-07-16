@@ -1,0 +1,62 @@
+<mujoco model="dpg room (mobile manipulation)">
+  <include file="panda_mobile.xml"/>
+  <statistic center="0.4 0.4 0.3" extent="2.5"/>
+  <visual><global offwidth="1280" offheight="960" azimuth="120" elevation="-35"/><headlight diffuse="0.7 0.7 0.7" ambient="0.5 0.5 0.5"/></visual>
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.5 0.65 0.85" rgb2="0.1 0.15 0.25" width="512" height="512"/>
+    <texture name="ft" type="2d" file="assets/light-gray-floor-tile.png"/>
+    <material name="floormat" texture="ft" texrepeat="10 10" reflectance="0.05"/>
+    <texture name="lw" type="2d" file="assets/light-wood.png"/>
+    <texture name="dw" type="2d" file="assets/dark-wood.png"/>
+    <material name="light-wood" texture="lw" texrepeat="4 4"/>
+    <material name="dark-wood" texture="dw" texrepeat="3 3"/>
+    <material name="tablemat" rgba="0.5 0.4 0.32 1"/>
+    <texture name="soup_tex" type="2d" file="assets/soup.png"/>
+    <material name="soup_mat" texture="soup_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="soup" file="soup.obj" scale="0.001 0.001 0.001"/>
+    <texture name="mug_tex" type="2d" file="assets/mug.png"/>
+    <material name="mug_mat" texture="mug_tex" specular="0.2" shininess="0.3"/>
+    <mesh name="mug" file="mug.obj" scale="0.001 0.001 0.001"/>
+  </asset>
+  <worldbody>
+    <light pos="0.4 0.4 2.5" dir="0 0 -1" directional="true"/>
+    <geom name="floor" type="plane" size="6 6 0.05" material="floormat"/>
+    <geom name="tbl0" type="box" pos="0.75 -0.55 0.15" size="0.3 0.3 0.15" material="tablemat"/>
+    <geom name="tbl1" type="box" pos="0.75 1.35 0.15" size="0.3 0.3 0.15" material="tablemat"/>
+    <geom name="obst0" type="box" pos="0.0 0.4 0.25" size="0.9 0.06 0.25" rgba="0.7 0.25 0.2 1"/>
+    <geom name="obst1" type="box" pos="-0.9 0.4 0.25" size="0.06 0.5 0.25" rgba="0.7 0.25 0.2 1"/>
+    <body name="bin1" pos="0.75 -0.55 0.33">
+      <geom size="0.14 0.16 0.02" type="box" group="0" friction="1 .005 .0001"/>
+      <geom size="0.14 0.16 0.02" type="box" contype="0" conaffinity="0" material="light-wood"/>
+      <geom pos="0 0.16 0.05" size="0.15000000000000002 0.01 0.05" type="box" group="0" friction="1 .005 .0001"/>
+      <geom pos="0 0.16 0.05" size="0.15000000000000002 0.01 0.05" type="box" contype="0" conaffinity="0" material="light-wood"/>
+      <geom pos="0 -0.16 0.05" size="0.15000000000000002 0.01 0.05" type="box" group="0" friction="1 .005 .0001"/>
+      <geom pos="0 -0.16 0.05" size="0.15000000000000002 0.01 0.05" type="box" contype="0" conaffinity="0" material="light-wood"/>
+      <geom pos="0.14 0 0.05" size="0.01 0.16 0.05" type="box" group="0" friction="1 .005 .0001"/>
+      <geom pos="0.14 0 0.05" size="0.01 0.16 0.05" type="box" contype="0" conaffinity="0" material="light-wood"/>
+      <geom pos="-0.14 0 0.05" size="0.01 0.16 0.05" type="box" group="0" friction="1 .005 .0001"/>
+      <geom pos="-0.14 0 0.05" size="0.01 0.16 0.05" type="box" contype="0" conaffinity="0" material="light-wood"/>
+    </body>
+    <body name="bin2" pos="0.75 1.35 0.33">
+      <geom size="0.14 0.16 0.02" type="box" group="0" friction="1 .005 .0001"/>
+      <geom size="0.14 0.16 0.02" type="box" contype="0" conaffinity="0" material="dark-wood"/>
+      <geom pos="0 0.16 0.05" size="0.15000000000000002 0.01 0.05" type="box" group="0" friction="1 .005 .0001"/>
+      <geom pos="0 0.16 0.05" size="0.15000000000000002 0.01 0.05" type="box" contype="0" conaffinity="0" material="dark-wood"/>
+      <geom pos="0 -0.16 0.05" size="0.15000000000000002 0.01 0.05" type="box" group="0" friction="1 .005 .0001"/>
+      <geom pos="0 -0.16 0.05" size="0.15000000000000002 0.01 0.05" type="box" contype="0" conaffinity="0" material="dark-wood"/>
+      <geom pos="0.14 0 0.05" size="0.01 0.16 0.05" type="box" group="0" friction="1 .005 .0001"/>
+      <geom pos="0.14 0 0.05" size="0.01 0.16 0.05" type="box" contype="0" conaffinity="0" material="dark-wood"/>
+      <geom pos="-0.14 0 0.05" size="0.01 0.16 0.05" type="box" group="0" friction="1 .005 .0001"/>
+      <geom pos="-0.14 0 0.05" size="0.01 0.16 0.05" type="box" contype="0" conaffinity="0" material="dark-wood"/>
+    </body>
+    <body name="obj_soup" pos="0.75 -0.55 0.37">
+      <freejoint/>
+      <geom name="geom_soup" type="mesh" mesh="soup" material="soup_mat" mass="0.1" friction="1.5 0.1 0.001"/>
+    </body>
+    <body name="obj_mug" pos="0.62 -0.66 0.37">
+      <freejoint/>
+      <geom name="geom_mug" type="mesh" mesh="mug" material="mug_mat" mass="0.1" friction="1.5 0.1 0.001"/>
+    </body>
+    <camera name="cam" pos="0.35 0.4 3.7" xyaxes="1 0 0 0 1 0.12"/>
+  </worldbody>
+</mujoco>
