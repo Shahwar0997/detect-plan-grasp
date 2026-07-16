@@ -12,6 +12,7 @@ store's known map. Step 2 of the prompt-driven store demo (parsing only; executi
 from __future__ import annotations
 import json
 import re
+import sys
 
 from make_scene_store import SHELVES, OBJECTS, shelf_park
 from rearrange import NAME2CLASS
@@ -57,18 +58,48 @@ def _rule_parse(command: str) -> dict:
             "dest": _shelf_after(t, ["to", "onto", "into", "on"])}
 
 
+# short descriptions so the LLM can map colloquial phrasing to catalog names
+DESC = {"soup": "tomato soup can", "mustard": "mustard bottle", "spam": "potted meat / spam can",
+        "mug": "coffee mug / cup", "bleach": "bleach cleanser", "cracker": "cheez-it cracker box",
+        "gelatin": "jell-o gelatin box", "chef": "master chef coffee can", "banana": "banana"}
+
+
+def _shelf_contents() -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {s: [] for s in SHELVES}
+    for m, sh, _ in OBJECTS:
+        if m not in out[sh]:
+            out[sh].append(m)
+    return out
+
+
 def _llm_parse(command: str) -> dict | None:
+    """Parse via the local LLM. Returns None (and warns) if the server is unreachable or the reply
+    is unusable, so a real outage is visible rather than silently masked by the rule fallback."""
     try:
         import ollama
-        prompt = (
-            f"You control a store robot. Shelves: {list(SHELVES)}. Objects: {CATALOG}.\n"
-            f'Command: "{command}"\n'
-            'Reply with ONLY JSON: {"object": <one object from the list>, '
-            '"source": <one shelf letter>, "dest": <one shelf letter>}.')
+    except ImportError:
+        return None
+    contents = _shelf_contents()
+    shelves = "\n".join(f"  {s}: " + ", ".join(f"{m} ({DESC.get(m, m)})" for m in contents[s])
+                        for s in sorted(contents))
+    prompt = (
+        "You parse commands for a store robot. The shelves currently hold:\n"
+        f"{shelves}\n"
+        f'Command: "{command}"\n'
+        "Choose the object (exactly one item name shown above), the source shelf it is on now, and "
+        "the destination shelf. Reply with ONLY JSON: "
+        '{"object": <item name>, "source": <A|B|C|D>, "dest": <A|B|C|D>}.')
+    try:
         r = ollama.chat(model=LLM, messages=[{"role": "user", "content": prompt}],
                         format="json", options={"temperature": 0})
+    except Exception as e:
+        print(f"[store_language] LLM server unreachable ({type(e).__name__}); using rule fallback",
+              file=sys.stderr)
+        return None
+    try:
         return json.loads(r["message"]["content"])
-    except Exception:
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
+        print(f"[store_language] LLM reply not usable ({e}); using rule fallback", file=sys.stderr)
         return None
 
 
