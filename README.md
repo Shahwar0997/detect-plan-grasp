@@ -39,6 +39,25 @@ docs vault):
 
 ![Mobile manipulation demo](docs/mobile_nav.gif)
 
+## Each piece, on its own
+
+Every stage was built and validated independently before being wired together:
+
+<table>
+<tr>
+<td width="50%" valign="top"><b>Detector (INT8 YOLO)</b> — YOLOv8-n identifies YCB objects from the arm's camera.<br/><img src="docs/detector.png" width="100%"/></td>
+<td width="50%" valign="top"><b>Quantization sweep</b> — INT8: 2.1× smaller, 1.5× faster, &lt;2.5% mAP loss (head kept FP32).<br/><img src="docs/int8_sweep.png" width="100%"/></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><b>Real vs. synthetic</b> — training on real YCB-Video closed the sim→real gap (0.41 → 0.80 mAP).<br/><img src="docs/sim_vs_real.png" width="100%"/></td>
+<td width="50%" valign="top"><b>3D localization</b> — detection back-projected through depth, verified vs ground-truth poses (~30 mm).<br/><img src="docs/lift_accuracy.png" width="100%"/></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><b>Grasp planning</b> — analytic top-down grasp + from-scratch 6-DOF Jacobian IK.<br/><img src="docs/grasp_sequence.png" width="100%"/></td>
+<td width="50%" valign="top"><b>Perception among distractors</b> — a per-shelf camera picks out each object in the store scene.<br/><img src="docs/store_detections.png" width="100%"/></td>
+</tr>
+</table>
+
 ## Results (measured)
 
 | Stage | What | Result |
