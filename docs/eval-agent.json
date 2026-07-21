@@ -1,0 +1,82 @@
+[
+  {
+    "system": "agent",
+    "kind": "single",
+    "goal": "take the soup from shelf A to shelf D",
+    "ok": true,
+    "steps": 9,
+    "sec": 22.7
+  },
+  {
+    "system": "agent",
+    "kind": "single",
+    "goal": "take the mug from shelf B to shelf D",
+    "ok": true,
+    "steps": 4,
+    "sec": 8.1
+  },
+  {
+    "system": "agent",
+    "kind": "recovery",
+    "goal": "take the mug from shelf A to shelf C",
+    "ok": true,
+    "steps": 6,
+    "sec": 10.3
+  },
+  {
+    "system": "agent",
+    "kind": "compositional",
+    "goal": "put all the cans from shelf A onto shelf D",
+    "ok": true,
+    "steps": 12,
+    "sec": 31.1
+  },
+  {
+    "system": "agent",
+    "kind": "compositional",
+    "goal": "clear shelf A onto shelf C",
+    "ok": true,
+    "steps": 11,
+    "sec": 23.6
+  },
+  {
+    "system": "baseline",
+    "kind": "single",
+    "goal": "take the soup from shelf A to shelf D",
+    "ok": true,
+    "steps": 4,
+    "sec": 7.6
+  },
+  {
+    "system": "baseline",
+    "kind": "single",
+    "goal": "take the mug from shelf B to shelf D",
+    "ok": true,
+    "steps": 4,
+    "sec": 6.1
+  },
+  {
+    "system": "baseline",
+    "kind": "recovery",
+    "goal": "take the mug from shelf A to shelf C",
+    "ok": false,
+    "steps": 4,
+    "sec": 1.3
+  },
+  {
+    "system": "baseline",
+    "kind": "compositional",
+    "goal": "put all the cans from shelf A onto shelf D",
+    "ok": false,
+    "steps": 3,
+    "sec": 1.1
+  },
+  {
+    "system": "baseline",
+    "kind": "compositional",
+    "goal": "clear shelf A onto shelf C",
+    "ok": false,
+    "steps": 3,
+    "sec": 1.1
+  }
+]

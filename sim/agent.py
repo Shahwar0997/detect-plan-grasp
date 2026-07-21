@@ -40,12 +40,13 @@ From the GOAL identify the DEST shelf and the TARGET. The TARGET is either ONE n
 ("take the mug to C") or a GROUP ("put all the cans from A on D", "clear shelf A" = every object on A).
 A SOURCE shelf in the GOAL is only a HINT — it can be wrong.
 Pick the next tool by the FIRST rule that matches the ROBOT STATE:
-1. holding something                                        -> place(DEST)
-2. a shelf named in the GOAL is not yet perceived           -> perceive(that shelf)
-3. any TARGET object appears under "Still to move"          -> grasp(the FIRST such object)
-4. TARGET object still not found anywhere                   -> perceive the FIRST shelf listed under
+1. every TARGET object is listed in "Already placed" on DEST -> done
+2. holding something                                        -> place(DEST)
+3. a shelf named in the GOAL is not yet perceived           -> perceive(that shelf)
+4. any TARGET object appears under "Still to move"          -> grasp(the FIRST such object)
+5. TARGET object still not found anywhere                   -> perceive the FIRST shelf listed under
    "Shelves NOT yet perceived"
-5. otherwise (all TARGET objects placed on DEST)            -> done
+6. otherwise                                                 -> done
 
 Notes:
 - `grasp` and `place` move the robot to the right shelf on their own — you do NOT navigate, and you do
@@ -54,7 +55,7 @@ Notes:
 - To find a mis-placed object, perceive shelves one at a time from "Shelves NOT yet perceived" until
   the OBJECT appears under "Objects seen". Do NOT re-perceive a shelf already perceived.
 - If "Shelves NOT yet perceived" is none and the OBJECT still isn't found, call done (it isn't here).
-- GROUP goals: rule 4 does NOT apply. If the GOAL names a SOURCE shelf and that shelf is already
+- GROUP goals: rule 5 does NOT apply. If the GOAL names a SOURCE shelf and that shelf is already
   perceived, NEVER perceive another shelf — every TARGET object is on SOURCE. The moment "Still to
   move" on SOURCE holds no TARGET objects (only non-matching ones, e.g. a bottle when the goal says
   "cans"), the job is FINISHED: emit done immediately.

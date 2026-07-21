@@ -1,0 +1,24 @@
+WARNING: ARB_clip_control unavailable while mjDEPTH_ZEROFAR requested, depth accuracy will be limited
+
+agent     single         PASS   9 steps   22.7s  take the soup from shelf A to shelf D
+agent     single         PASS   4 steps    8.1s  take the mug from shelf B to shelf D
+agent     recovery       PASS   6 steps   10.3s  take the mug from shelf A to shelf C
+agent     compositional  PASS  12 steps   31.1s  put all the cans from shelf A onto shelf D
+agent     compositional  PASS  11 steps   23.6s  clear shelf A onto shelf C
+baseline  single         PASS   4 steps    7.6s  take the soup from shelf A to shelf D
+baseline  single         PASS   4 steps    6.1s  take the mug from shelf B to shelf D
+baseline  recovery       FAIL   4 steps    1.3s  take the mug from shelf A to shelf C
+baseline  compositional  FAIL   3 steps    1.1s  put all the cans from shelf A onto shelf D
+baseline  compositional  FAIL   3 steps    1.1s  clear shelf A onto shelf C
+
+=== summary ===
+agent     success 5/5 (100%)  avg steps (successful) 8.4
+    single         2/2
+    recovery       1/1
+    compositional  2/2
+baseline  success 2/5 (40%)  avg steps (successful) 4.0
+    single         2/2
+    recovery       0/1
+    compositional  0/2
+
+wrote docs/eval-agent.json
