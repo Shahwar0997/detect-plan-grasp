@@ -56,6 +56,7 @@ class RobotTools:
         self._held: dict | None = None
         self._grasp_R = None
         self._at: str | None = None
+        self._placed: dict[str, str] = {}     # object -> shelf it was successfully placed on
 
     # ---------- perception ----------
     def perceive(self, shelf: str) -> dict:
@@ -77,43 +78,58 @@ class RobotTools:
         return {"tool": "perceive", "ok": True, "shelf": shelf, "objects": objs}
 
     # ---------- navigation ----------
-    def go_to(self, shelf: str) -> dict:
-        """A*-navigate the base to `shelf` and face it. Tucks the arm high to travel when the
-        hands are empty so it clears the shelf objects."""
-        shelf = str(shelf).strip().upper()
-        if shelf not in SHELVES:
-            return {"tool": "go_to", "ok": False, "error": f"no shelf {shelf!r}"}
+    def _ensure_at(self, shelf: str) -> tuple[bool, int, str | None]:
+        """Navigate to `shelf` and face it, unless already there. -> (ok, waypoints, error).
+        Used internally so grasp()/place() don't require the agent to hand-coordinate motion."""
+        if self._at == shelf:
+            return True, 0, None
         cx, cy, side = SHELVES[shelf]
         park = (cx, cy + side * 0.45)
         if self._held is None:
-            self.sim.move_to(self.sim.q_travel, steps=300)
+            self.sim.move_to(self.sim.q_travel, steps=300)          # tuck arm to travel
         start = tuple(self.sim.base_xy())
         path = RoomNav(_obstacles(), xlim=(-2.0, 2.0), ylim=(-2.0, 2.0), inflate=0.22).astar(start, park)
         if path is None:
-            return {"tool": "go_to", "ok": False, "error": f"no path to shelf {shelf}"}
+            return False, 0, f"no path to shelf {shelf}"
         for wx, wy in path:
             self.sim.drive_to(wx, wy)
         self.sim.drive_to(*park, yaw=self.sim.face_shelf_yaw(shelf))
         self._at = shelf
-        return {"tool": "go_to", "ok": True, "at": shelf, "waypoints": len(path)}
+        return True, len(path), None
+
+    def go_to(self, shelf: str) -> dict:
+        """A*-navigate the base to `shelf` and face it (optional — grasp/place navigate on their own)."""
+        shelf = str(shelf).strip().upper()
+        if shelf not in SHELVES:
+            return {"tool": "go_to", "ok": False, "error": f"no shelf {shelf!r}"}
+        ok, wp, err = self._ensure_at(shelf)
+        return {"tool": "go_to", "ok": ok, "at": self._at, "waypoints": wp} if ok \
+            else {"tool": "go_to", "ok": False, "error": err}
 
     # ---------- manipulation ----------
     def grasp(self, object: str) -> dict:
-        """Grasp a perceived object off the shelf the robot is at (verified — must actually lift)."""
+        """Grasp a perceived object (verified — must actually lift). Navigates to the object's
+        shelf on its own; only requires that the object was perceived somewhere."""
         if self._held is not None:
             return {"tool": "grasp", "ok": False, "error": f"already holding {self._held['object']}"}
-        if self._at is None:
-            return {"tool": "grasp", "ok": False, "error": "not at a shelf; call go_to(shelf) first"}
-        seen = self._seen.get(self._at, [])
         obj = str(object).strip().lower()
-        e = next((x for x in seen if obj in x["object"] or x["object"] in obj), None)
-        if e is None:
-            return {"tool": "grasp", "ok": False, "error": f"{object!r} not seen on shelf {self._at}",
-                    "available": [x["object"] for x in seen]}
+        hit = None
+        for sh, items in self._seen.items():
+            e = next((x for x in items if obj in x["object"] or x["object"] in obj), None)
+            if e is not None:
+                hit = (sh, e); break
+        if hit is None:
+            return {"tool": "grasp", "ok": False,
+                    "error": f"{object!r} not perceived anywhere; perceive its shelf first",
+                    "perceived": {sh: [x["object"] for x in items] for sh, items in self._seen.items()}}
+        shelf, e = hit
         if e["suffix"] is None:
             return {"tool": "grasp", "ok": False, "error": f"cannot resolve body for {object!r}"}
+        ok, _, err = self._ensure_at(shelf)
+        if not ok:
+            return {"tool": "grasp", "ok": False, "error": err}
         p = e["w"].copy()
-        self.sim.drive_to(*self.sim.grasp_park(self._at, p[0]), yaw=self.sim.face_shelf_yaw(self._at))
+        self.sim.drive_to(*self.sim.grasp_park(shelf, p[0]), yaw=self.sim.face_shelf_yaw(shelf))
         if not grasp_verified(self.sim, p, e["pts"], e["suffix"]):
             return {"tool": "grasp", "ok": True, "object": e["object"], "grasped": False}
         self._grasp_R = self.sim.grasp_R
@@ -125,12 +141,16 @@ class RobotTools:
         return {"tool": "grasp", "ok": True, "object": e["object"], "grasped": True, "holding": e["object"]}
 
     def place(self, shelf: str) -> dict:
-        """Place the held object upright at a clear spot on `shelf` (verified: on the shelf, tilt≈0)."""
+        """Place the held object upright at a clear spot on `shelf` (verified: on the shelf, tilt≈0).
+        Navigates to the shelf on its own."""
         shelf = str(shelf).strip().upper()
         if self._held is None:
             return {"tool": "place", "ok": False, "error": "not holding anything"}
-        if self._at != shelf:
-            return {"tool": "place", "ok": False, "error": f"not at shelf {shelf} (at {self._at}); go_to first"}
+        if shelf not in SHELVES:
+            return {"tool": "place", "ok": False, "error": f"no shelf {shelf!r}"}
+        ok, _, err = self._ensure_at(shelf)
+        if not ok:
+            return {"tool": "place", "ok": False, "error": err}
         suffix = self._held["suffix"]
         px, py = self.sim.clear_spot(shelf)
         _, dcy, dside = SHELVES[shelf]
@@ -147,6 +167,8 @@ class RobotTools:
         placed = bool(abs(o[0] - px) < 0.20 and abs(o[1] - py) < 0.18 and o[2] > SHELF_TOP - 0.02)
         obj = self._held["object"]
         self._held = None
+        if placed:
+            self._placed[obj] = shelf
         return {"tool": "place", "ok": True, "object": obj, "shelf": shelf,
                 "placed": placed, "tilt_deg": round(tilt)}
 
@@ -156,6 +178,7 @@ class RobotTools:
         bx, by = self.sim.base_xy()
         return {"tool": "world_state", "at": self._at, "base_xy": [round(bx, 2), round(by, 2)],
                 "holding": self._held["object"] if self._held else None,
+                "placed": dict(self._placed),
                 "seen": {sh: [e["object"] for e in es] for sh, es in self._seen.items()}}
 
 
