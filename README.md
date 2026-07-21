@@ -19,14 +19,60 @@ Four cleanly separable stages, each independently validated, wired into one loop
   through a full inference-optimization sweep — ONNX → **INT8 quantization** → benchmark — as a
   **torch-free** ONNX Runtime path. Detections are back-projected through depth into 3D positions.
   *(The ML-systems half.)*
-- **Language (grounded).** A **local LLM** (Llama 3.2-3B via Ollama) turns a free-form command into a
-  validated `{object, source, dest}` task, grounded against the store's shelf contents — with a
-  deterministic rule parser as fallback. *(The reasoning layer.)*
+- **Language (grounded) → agentic.** A **local LLM** turns a free-form command into a validated
+  `{object, source, dest}` task, grounded against the store's shelf contents, with a deterministic
+  rule parser as fallback. It now also runs as a **planner** in a from-scratch ReAct loop that calls
+  the robot's tools and re-plans on what it observes — see [The agent](#the-agent--from-parser-to-planner).
+  *(The reasoning layer.)*
 - **Planning & control (from scratch).** Analytic grasp planning with a **verify-and-retry** grasp
   check, from-scratch **6-DOF Jacobian IK**, and **A\*/RRT** navigation around obstacles, in a MuJoCo
   physics sim. *(The robotics half.)*
 - **Integration.** One command flows end to end: parse → navigate to the source → detect the object
   among distractors → grasp → navigate to the destination → place upright.
+
+## The agent — from parser to planner
+
+Originally the LLM did one job: turn a sentence into `{object, source, dest}`. The pipeline did the
+rest in a fixed order, so any wrong assumption in the command was fatal. The agentic layer replaces
+that fixed order with a **ReAct loop written from scratch** (no LangChain, ~30 lines): the model sees
+the goal, the tools, and the robot's live state, emits one tool call as JSON, observes the structured
+result, and re-plans — until it decides the job is done.
+
+![Agent solving a compositional goal](docs/agent_compositional.gif)
+
+> **"put all the cans from shelf A onto shelf D"** — the agent decomposes one sentence into two
+> pick-and-place cycles, correctly leaves the mustard bottle behind (it is not a can), and stops on
+> its own. The caption is the tool call in flight.
+
+**Action space** (`sim/agent_tools.py`) — `perceive(shelf)`, `grasp(object)`, `place(shelf)`,
+`go_to(shelf)`, `world_state()`. Every tool is **fail-soft**: it returns a typed reason instead of
+raising, so a failure becomes something the planner can re-plan around rather than a crash.
+
+**The environment is the memory.** The agent is stateless across turns — no growing chat log. Each
+turn it receives the robot's current `world_state()`, which keeps the prompt small and the reasoning
+grounded in what is actually true rather than in what it previously said.
+
+**Measured against a one-shot baseline** (`sim/eval_agent.py`) — same model, same tools, same goals,
+but asked *once* for a complete plan which is then executed blindly. Success is scored from the
+simulator's state, not the agent's report:
+
+| System | Overall | single-object | recovery (wrong premise) | compositional |
+|---|---|---|---|---|
+| **agent** (ReAct loop) | **5/5 (100 %)** | 2/2 | 1/1 | 2/2 |
+| baseline (one-shot plan) | 2/5 (40 %) | 2/2 | 0/1 | 0/2 |
+
+The baseline solves exactly the goals where a blind plan is *accidentally* correct. It fails every
+goal where the world has to talk back: it cannot discover that the mug is **not** on the shelf the
+command names, and it cannot know how many cans sit on a shelf it has not looked at yet. Those plan
+lengths and locations are unknowable in advance — a system that cannot re-plan cannot represent them.
+
+Model choice was measured, not assumed: **Llama-3.2-3B parses reliably but cannot plan** (it loops
+without ever grasping); **Qwen2.5-7B plans**. Both run locally on CPU.
+
+**Honest limits.** Task success is 5/5, but step efficiency is not solved — compositional goals take
+11–12 steps against an optimal 6, and one run hit the step cap instead of terminating cleanly. The
+agent also gives up on an object after two failed grasps and reports the skip, rather than pretending
+it succeeded.
 
 ## How it got here
 
@@ -69,6 +115,7 @@ Every stage was built and validated independently before being wired together:
 | Grasp | analytic planner + 6-DOF Jacobian IK, closed loop | detector-driven grasp on the tabletop (vs 2.5% no-perception baseline) |
 | Mobile | detect → grasp → A\* navigate → place | delivers the commanded object **upright** across the scene |
 | Store | natural-language command → end-to-end delivery | LLM-grounded pick-and-place among distractors, across shelves |
+| **Agent** | ReAct loop vs one-shot planner, 5-goal suite | **100 % vs 40 %** task success; recovers from wrong commands |
 
 The detector genuinely drives the robot: the arm renders its camera, the INT8 YOLO detects the
 object, its box is lifted to a 3D world position, and the robot grasps and delivers it — an object it
@@ -80,8 +127,8 @@ the natural next step.
 
 ## Stack
 
-Python · Ultralytics YOLOv8 · ONNX Runtime · INT8 quantization · MuJoCo · Ollama (Llama 3.2) ·
-OpenCV · NumPy. From-scratch Jacobian IK, analytic grasp planning, A\*/RRT navigation.
+Python · Ultralytics YOLOv8 · ONNX Runtime · INT8 quantization · MuJoCo · Ollama (Llama 3.2,
+Qwen2.5-7B) · from-scratch ReAct agent loop & tool-use · OpenCV · NumPy. From-scratch Jacobian IK, analytic grasp planning, A\*/RRT navigation.
 Training on Colab GPU; inference, LLM, and sim run locally (CPU / Apple-Silicon, torch-free).
 
 ## Run it
@@ -103,6 +150,12 @@ bash sim/fetch_assets.sh                              # restore Panda meshes (gi
 ./.venv/bin/python sim/mobile_task.py tomato_soup_can # detect → grasp → navigate → place
 ./.venv/bin/python sim/store_language.py              # LLM command → validated task (needs `ollama serve`)
 ./.venv/bin/python sim/store_task.py "grab the soup can on shelf A and put it on shelf D"
+
+# --- the agent (needs `ollama serve` + `ollama pull qwen2.5:7b`)
+./.venv/bin/python sim/agent.py "put all the cans from shelf A onto shelf D"
+./.venv/bin/python sim/agent.py "take the mug from shelf A to shelf C"   # the mug is NOT on A
+./.venv/bin/python sim/eval_agent.py                                     # agent vs one-shot baseline
+./.venv/bin/python sim/record_agent.py "clear shelf A onto shelf C" docs/demo.mp4
 ```
 
 ## Dataset
