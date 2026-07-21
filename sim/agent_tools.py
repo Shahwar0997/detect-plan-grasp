@@ -56,7 +56,8 @@ class RobotTools:
         self._held: dict | None = None
         self._grasp_R = None
         self._at: str | None = None
-        self._placed: dict[str, str] = {}     # object -> shelf it was successfully placed on
+        self._placed: dict[str, str] = {}
+        self._slots: dict[str, list[float]] = {}   # shelf -> x-offsets this robot has already used     # object -> shelf it was successfully placed on
 
     # ---------- perception ----------
     def perceive(self, shelf: str) -> dict:
@@ -137,6 +138,9 @@ class RobotTools:
         self.sim.frame_hook = lambda: _carry(self.sim, e["suffix"], *rel)
         bx, by = self.sim.base_xy()
         self.sim.reach([bx, by, 0.78], R_des=self._grasp_R, steps=500)   # tuck payload high to travel
+        # Perception is a snapshot: once lifted, the object is no longer on that shelf. Leaving it
+        # in `_seen` made a later grasp drive to the OLD shelf and fail — stale state, not bad planning.
+        self._seen[shelf] = [x for x in self._seen[shelf] if x["object"] != e["object"]]
         self._held = {"object": e["object"], "suffix": e["suffix"]}
         return {"tool": "grasp", "ok": True, "object": e["object"], "grasped": True, "holding": e["object"]}
 
@@ -152,11 +156,14 @@ class RobotTools:
         if not ok:
             return {"tool": "place", "ok": False, "error": err}
         suffix = self._held["suffix"]
-        px, py = self.sim.clear_spot(shelf)
+        px, py = self.sim.clear_spot(shelf, self._slots.get(shelf, []))
         _, dcy, dside = SHELVES[shelf]
         self.sim.drive_to(px, dcy + dside * 0.45, yaw=self.sim.face_shelf_yaw(shelf))
         self.sim.reach([px, py, 0.72], R_des=self.sim.DOWN, steps=500)
-        self.sim.reach([px, py, SHELF_TOP + 0.13], R_des=self.sim.DOWN, steps=450)
+        # Release height matters: at +0.13 a short can (potted_meat) fell ~10 cm, bounced and slid
+        # off the shelf edge — reproducibly, while a taller can survived. Set the object down instead
+        # of dropping it: descend until it is nearly touching, then open.
+        self.sim.reach([px, py, SHELF_TOP + 0.09], R_des=self.sim.DOWN, steps=450)
         self.sim.frame_hook = None
         self.sim.set_gripper(open_=True, steps=250)
         for _ in range(250):
@@ -164,13 +171,23 @@ class RobotTools:
         o = self.sim.d.xpos[self.sim.m.body(f"obj_{suffix}").id]
         R = self.sim.d.xmat[self.sim.m.body(f"obj_{suffix}").id].reshape(3, 3)
         tilt = float(np.degrees(np.arccos(min(1.0, abs(R[2, 2])))))
-        placed = bool(abs(o[0] - px) < 0.20 and abs(o[1] - py) < 0.18 and o[2] > SHELF_TOP - 0.02)
+        # Verify the goal ("is it on the shelf?"), not the trajectory ("did it land on my exact
+        # pixel?"). The old check compared against the drop point, so a can that settled a few cm
+        # away was reported as failed — it then vanished from the agent's state and sent the
+        # planner hunting for an object that was sitting safely on the target shelf.
+        scx, scy, _ = SHELVES[shelf]
+        placed = bool(abs(o[0] - scx) < 0.45 and abs(o[1] - scy) < 0.30 and o[2] > SHELF_TOP - 0.02)
+        drift = round(float(np.hypot(o[0] - px, o[1] - py)), 3)
         obj = self._held["object"]
         self._held = None
+        self._slots.setdefault(shelf, []).append(px - SHELVES[shelf][0])   # this spot is now taken
         if placed:
             self._placed[obj] = shelf
-        return {"tool": "place", "ok": True, "object": obj, "shelf": shelf,
-                "placed": placed, "tilt_deg": round(tilt)}
+            return {"tool": "place", "ok": True, "object": obj, "shelf": shelf,
+                    "placed": True, "tilt_deg": round(tilt), "drift_m": drift}
+        return {"tool": "place", "ok": True, "object": obj, "shelf": shelf, "placed": False,
+                "tilt_deg": round(tilt),
+                "note": f"{obj} did not settle on {shelf}; perceive {shelf} to re-locate it"}
 
     # ---------- state ----------
     def world_state(self) -> dict:

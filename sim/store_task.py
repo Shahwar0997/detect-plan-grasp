@@ -63,12 +63,20 @@ class StoreSim(MobileSim):
         _, cy, side = SHELVES[shelf]
         return (x, cy + side * 0.45)                           # park directly in front of a column
 
-    def clear_spot(self, shelf):
-        """An x on `shelf` clear of the objects already there (so a placed object doesn't knock one)."""
+    def clear_spot(self, shelf, extra=()):
+        """An x on `shelf` clear of the objects already there (so a placed object doesn't knock one).
+
+        `extra` = offsets the robot has already used on this shelf. Without it, a multi-object task
+        ("put all the cans on D") drops every object on the same spot: the layout below is the
+        *spawn* layout, so it cannot see what the robot itself put there.
+        """
         cx, cy, side = SHELVES[shelf]
-        taken = [dx for _, sh, dx in OBJECTS if sh == shelf]      # candidates stay off the shelf edge
-        dx = max([-0.26, -0.09, 0.09, 0.26], key=lambda c: min(abs(c - t) for t in taken))
-        return (cx + dx, cy + side * 0.04)
+        # Placements go in the BACK row. The spawn row is full — 3 objects across 0.76 m — so the
+        # best free front-row slot left only ~0.11 m of clearance, and a wide flat can clipped its
+        # neighbour and tipped over (reproducibly). The back row is empty and still in reach.
+        taken = list(extra)
+        dx = max([-0.20, 0.0, 0.20], key=lambda c: min([abs(c - t) for t in taken], default=9.0))
+        return (cx + dx, cy - side * 0.10)
 
     def drive_to(self, x, y, yaw=None, steps=6000, tol=0.05):
         self.d.ctrl[self.base_act[0]], self.d.ctrl[self.base_act[1]] = x, y
