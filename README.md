@@ -1,10 +1,11 @@
 # Detect · Plan · Grasp
 
-**Language-driven robotic manipulation** — tell a mobile robot what you want in plain English and it
-finds, picks, and delivers the right object. An **on-device LLM agent** plans the task and calls the
-robot's tools, re-planning as it observes results; a trained, **INT8-quantized** detector drives an
-analytic grasp on a mobile base that navigates with A\*. Every stage verifies itself:
-**perceive → decide → act → verify.**
+**Perception-to-action ML system** — tell a mobile robot what you want in plain English and it finds,
+picks, and delivers the right object. A YOLOv8 detector trained on YCB-Video and **quantized to INT8**
+perceives the scene from the robot's own camera; its detections are lifted to 3D and drive an analytic
+grasp on a mobile base that navigates with A\*. An **on-device LLM agent** sits on top, turning the
+instruction into a plan and calling the robot's tools as it observes results. Every stage verifies
+itself: **perceive → decide → act → verify.**
 
 ![Prompt-driven store demo](docs/store_capstone.gif)
 
