@@ -1,9 +1,10 @@
 # Detect · Plan · Grasp
 
-**Language-driven robotic manipulation** — a spoken command sends a mobile robot to *find, pick, and
-deliver* the right object. A trained, INT8-quantized detector drives an analytic grasp on a mobile
-base, planned with A\*, commanded in natural language grounded by a local LLM. Every stage verifies
-itself: **perceive → decide → act → verify.**
+**Language-driven robotic manipulation** — tell a mobile robot what you want in plain English and it
+finds, picks, and delivers the right object. An **on-device LLM agent** plans the task and calls the
+robot's tools, re-planning as it observes results; a trained, **INT8-quantized** detector drives an
+analytic grasp on a mobile base that navigates with A\*. Every stage verifies itself:
+**perceive → decide → act → verify.**
 
 ![Prompt-driven store demo](docs/store_capstone.gif)
 
@@ -19,10 +20,10 @@ Four cleanly separable stages, each independently validated, wired into one loop
   through a full inference-optimization sweep — ONNX → **INT8 quantization** → benchmark — as a
   **torch-free** ONNX Runtime path. Detections are back-projected through depth into 3D positions.
   *(The ML-systems half.)*
-- **Language (grounded) → agentic.** A **local LLM** turns a free-form command into a validated
-  `{object, source, dest}` task, grounded against the store's shelf contents, with a deterministic
-  rule parser as fallback. It now also runs as a **planner** in a from-scratch ReAct loop that calls
-  the robot's tools and re-plans on what it observes — see [The agent](#the-agent--from-parser-to-planner).
+- **Language & planning (on-device LLM).** For a direct instruction, the model grounds the sentence
+  into a validated `{object, source, dest}` task against the store's shelf contents, with a
+  deterministic rule parser as fallback. For open-ended goals it runs the robot as an **agent**,
+  choosing and calling tools one at a time — see [Agentic control](#agentic-control).
   *(The reasoning layer.)*
 - **Planning & control (from scratch).** Analytic grasp planning with a **verify-and-retry** grasp
   check, from-scratch **6-DOF Jacobian IK**, and **A\*/RRT** navigation around obstacles, in a MuJoCo
@@ -30,13 +31,16 @@ Four cleanly separable stages, each independently validated, wired into one loop
 - **Integration.** One command flows end to end: parse → navigate to the source → detect the object
   among distractors → grasp → navigate to the destination → place upright.
 
-## The agent — from parser to planner
+## Agentic control
 
-Originally the LLM did one job: turn a sentence into `{object, source, dest}`. The pipeline did the
-rest in a fixed order, so any wrong assumption in the command was fatal. The agentic layer replaces
-that fixed order with a **ReAct loop written from scratch** (no LangChain, ~30 lines): the model sees
-the goal, the tools, and the robot's live state, emits one tool call as JSON, observes the structured
-result, and re-plans — until it decides the job is done.
+Some instructions cannot be carried out as a fixed sequence. *"Put all the cans on shelf D"* has no
+known length until the robot looks. *"Take the mug from shelf A"* is simply wrong if the mug is on
+shelf B. Both need a system that chooses its next action from what it observes right now.
+
+So the LLM runs the robot as an **agent**, through a **ReAct loop written from scratch** (no
+LangChain, ~30 lines): it receives the goal, the available tools, and the robot's live state, emits
+one tool call as JSON, observes the structured result, and re-plans — until it decides the job is
+done. The stages below are the capabilities; the agent decides which to invoke, and when.
 
 ![Agent solving a compositional goal](docs/agent_compositional.gif)
 
@@ -69,7 +73,7 @@ lengths and locations are unknowable in advance — a system that cannot re-plan
 Model choice was measured, not assumed: **Llama-3.2-3B parses reliably but cannot plan** (it loops
 without ever grasping); **Qwen2.5-7B plans**. Both run locally on CPU.
 
-**Honest limits.** Task success is 5/5, but step efficiency is not solved — compositional goals take
+**Where it falls short.** Task success is 5/5, but step efficiency is not solved — compositional goals take
 11–12 steps against an optimal 6, and one run hit the step cap instead of terminating cleanly. The
 agent also gives up on an object after two failed grasps and reports the skip, rather than pretending
 it succeeded.
@@ -81,7 +85,8 @@ docs vault):
 
 `01` block pick-and-place → `02` detector-driven grasp → `03` multi-object detection →
 `04` language-driven rearrangement (local LLM) → `05` path planning (RRT-Connect) →
-`06` **mobile manipulation** (detect · navigate · deliver) → `07` **prompt-driven store** (the capstone).
+`06` **mobile manipulation** (detect · navigate · deliver) → `07` **prompt-driven store** →
+`08` **agentic control** (the LLM plans, calls tools, and recovers from wrong instructions).
 
 ![Mobile manipulation demo](docs/mobile_nav.gif)
 
@@ -122,7 +127,8 @@ object, its box is lifted to a 3D world position, and the robot grasps and deliv
 was **not** told the location of.
 
 **Honest limit:** the two-finger parallel gripper reliably handles cans and mugs; wide boxes, tapered
-bottles, and thin curved objects are detected but defeat the pinch grasp — a learned grasp model is
+bottles, and thin curved objects are detected but defeat the pinch grasp (measured per object — the
+agent detects every item on a shelf but can only pick a subset, and reports what it skipped) — a learned grasp model is
 the natural next step.
 
 ## Stack
