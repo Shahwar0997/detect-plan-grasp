@@ -40,7 +40,7 @@ shelf B. Both need a system that chooses its next action from what it observes r
 So the LLM runs the robot as an **agent**, through a **ReAct loop written from scratch** (no
 LangChain, ~30 lines): it receives the goal, the available tools, and the robot's live state, emits
 one tool call as JSON, observes the structured result, and re-plans — until it decides the job is
-done. The stages below are the capabilities; the agent decides which to invoke, and when.
+done. The four stages above are the capabilities; the agent decides which to invoke, and when.
 
 ![Agent solving a compositional goal](docs/agent_compositional.gif)
 
