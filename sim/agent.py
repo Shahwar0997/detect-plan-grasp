@@ -36,32 +36,47 @@ time and holds AT MOST one object. Achieve the GOAL by choosing ONE tool each tu
 Tools:
 {TOOLS_DOC}
 
-First, from the GOAL, identify: the OBJECT to move, its SOURCE shelf, and the DEST shelf.
-Then pick the next tool by the FIRST rule that matches the ROBOT STATE:
-1. OBJECT already in "Already placed" on DEST  -> done
-2. SOURCE not yet perceived                    -> perceive(SOURCE)
-3. not holding the OBJECT                       -> grasp(OBJECT)
-4. holding the OBJECT                            -> place(DEST)
+From the GOAL, identify the OBJECT to move and the DEST shelf. The GOAL may name a SOURCE shelf, but
+treat it only as a HINT — it can be wrong or missing.
+Pick the next tool by the FIRST rule that matches the ROBOT STATE:
+1. OBJECT is listed in "Already placed" on DEST            -> done
+2. holding the OBJECT                                       -> place(DEST)
+3. OBJECT appears under "Objects seen" on ANY shelf         -> grasp(OBJECT)
+4. otherwise (OBJECT not seen yet)                          -> perceive the FIRST shelf listed under
+   "Shelves NOT yet perceived"
 
 Notes:
-- `grasp` and `place` move the robot to the right shelf on their own — you do NOT navigate.
+- `grasp` and `place` move the robot to the right shelf on their own — you do NOT navigate, and you do
+  NOT need to be at the object's shelf to grasp it.
 - The `place` argument is ALWAYS the DEST shelf.
-- Never perceive a shelf already listed in `perceived`.
-- Once OBJECT shows in "Already placed" on DEST, the goal is achieved — call done.
+- To find a mis-placed object, perceive shelves one at a time from "Shelves NOT yet perceived" until
+  the OBJECT appears under "Objects seen". Do NOT re-perceive a shelf already perceived.
+- If "Shelves NOT yet perceived" is none and the OBJECT still isn't found, call done (it isn't here).
 
 Respond with ONLY a JSON object, no prose:
-{{"tool": "<name>", "args": {{...}}, "reason": "<short, cite the rule number>"}}
-args: use "shelf" for perceive/go_to/place, "object" for grasp, {{}} for done."""
+{{"tool": "<name>", "args": {{...}}, "reason": "<cite the rule number>"}}
+
+Examples — copy these shapes exactly:
+  look:   {{"tool": "perceive", "args": {{"shelf": "A"}}, "reason": "4"}}
+  pick:   {{"tool": "grasp", "args": {{"object": "mug"}}, "reason": "3"}}
+  put:    {{"tool": "place", "args": {{"shelf": "C"}}, "reason": "2"}}
+  FINISH: {{"tool": "done", "args": {{}}, "reason": "1"}}
+
+IMPORTANT: if rule 1 matches (the OBJECT already appears in "Already placed" on DEST), you MUST emit
+the FINISH action exactly as shown — {{"tool": "done", "args": {{}}, "reason": "1"}}. Do NOT call
+place or grasp again; the job is finished."""
 
 
 def _state_str(bot: RobotTools) -> str:
     ws = bot.world_state()
     perceived = ", ".join(ws["seen"].keys()) or "none"
+    unseen = ", ".join(s for s in "ABCD" if s not in ws["seen"]) or "none (all perceived)"
     where = ws["at"] or "not at any shelf"
     holding = ws["holding"] or "nothing"
     placed = "; ".join(f"{o} on {s}" for o, s in ws["placed"].items()) or "nothing yet"
     objs = " | ".join(f"{s} has: {', '.join(o)}" for s, o in ws["seen"].items()) or "—"
     return (f"Perceived shelves so far: {perceived}. "
+            f"Shelves NOT yet perceived: {unseen}. "
             f"Robot is currently at: {where}. "
             f"Robot is holding: {holding}. "
             f"Already placed: {placed}. "
@@ -100,10 +115,23 @@ def run_agent(goal: str, bot: RobotTools, max_steps: int = 12, verbose: bool = T
                 arg = args or None
             else:
                 arg = None
+            # Loop-guard: keep SEARCH monotonic. A small model re-perceives shelves it has already
+            # checked (thrashing A->B->A->B). If it asks to perceive a seen shelf, redirect it to the
+            # next unchecked one so the search always makes progress. The LLM still decides *when*
+            # to search vs grasp vs place; the guard only stops it from repeating itself.
+            redirected = None
+            if tool == "perceive" and arg is not None:
+                seen = set(bot.world_state()["seen"])
+                if str(arg).strip().upper() in seen:
+                    nxt = next((s for s in "ABCD" if s not in seen), None)
+                    if nxt is not None:
+                        redirected, arg = (str(arg).strip().upper(), nxt), nxt
             try:
                 obs = method(arg) if arg is not None else method()
             except Exception as e:
                 obs = {"ok": False, "error": f"tool crashed: {e}"}
+            if redirected and isinstance(obs, dict):
+                obs["guard"] = f"{redirected[0]} already perceived -> redirected to {redirected[1]}"
         if verbose:
             print(f"     obs -> {json.dumps(obs, default=str)}")
         last = json.dumps(obs, default=str)
